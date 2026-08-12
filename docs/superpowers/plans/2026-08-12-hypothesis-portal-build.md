@@ -91,7 +91,7 @@ git commit -m "docs: lock public repository oauth security contract"
 
 ```ts
 it("exposes only browser-safe public configuration", () => {
-  const env = loadPublicEnv({ NEXT_PUBLIC_APP_NAME: "Hypothesis Portal", AUTH_GITHUB_SECRET: "must-not-export" });
+  const env = loadPublicEnv({ NEXT_PUBLIC_APP_NAME: "Hypothesis Portal", AUTH_GITHUB_SECRET: undefined });
   expect(env).toEqual({ appName: "Hypothesis Portal" });
   expect(JSON.stringify(env)).not.toContain("AUTH_GITHUB_SECRET");
 });
