@@ -20,6 +20,8 @@ importers:
 
   apps/api: {}
 
+  apps/edge: {}
+
   apps/web: {}
 
   apps/worker: {}
