@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@portal/config": resolve(__dirname, "packages/config/src"),
+      "@portal/domain": resolve(__dirname, "packages/domain/src"),
+      "@portal/db": resolve(__dirname, "packages/db/src"),
+      "@portal/adapters": resolve(__dirname, "packages/adapters/src"),
+      "@portal/ui": resolve(__dirname, "packages/ui/src"),
     },
   },
   test: {
