@@ -37,7 +37,7 @@
 
 ## Локальный foundation
 
-Task 2 добавляет pnpm workspace с `apps/web`, `apps/api`, `apps/worker` и пакетами `config`, `domain`, `db`, `adapters`, `ui`. Это каркас без OAuth callback, миграций и запросов к рекламным API.
+Task 2 добавляет pnpm workspace с `apps/web`, `apps/api`, `apps/worker` и пакетами `config`, `domain`, `db`, `adapters`, `ui`. Task 3 добавляет безопасный auth foundation: GitHub subject allowlist, deny-by-default RBAC, workspace scope, opaque server-side sessions и append-only audit repository. Production OAuth callback, durable stores, миграции и запросы к рекламным API остаются следующими задачами roadmap.
 
 ```bash
 pnpm install --frozen-lockfile
