@@ -6,9 +6,12 @@ import {
 } from "@portal/ui/read-models";
 import type { HypothesisJournalItem } from "@portal/ui/read-models";
 import { createParkSkazkaFixture } from "@portal/db/fixtures/park-skazka-fixture";
+import { FixturePortalReadRepository, type PortalReadRepository } from "@portal/db/repositories/read-repository";
 
-function fixturePayload() {
-  const fixture = createParkSkazkaFixture();
+const defaultReadRepository: PortalReadRepository = new FixturePortalReadRepository(createParkSkazkaFixture());
+
+function fixturePayload(repository: PortalReadRepository) {
+  const fixture = repository.getFixture();
   const summary = buildDashboardSummary({
     dateRange: {
       from: fixture.test.startsOn,
@@ -59,7 +62,10 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-export async function handleReadRequest(request: Request): Promise<Response> {
+export async function handleReadRequest(
+  request: Request,
+  repository: PortalReadRepository = defaultReadRepository,
+): Promise<Response> {
   if (request.method !== "GET") return json({ error: "READ_ONLY_ROUTE" }, 405);
 
   const url = new URL(request.url);
@@ -78,7 +84,7 @@ export async function handleReadRequest(request: Request): Promise<Response> {
       ownerSubjectId: url.searchParams.get("ownerSubjectId") ?? undefined,
     });
 
-    const payload = fixturePayload();
+    const payload = fixturePayload(repository);
     if (kind === "summary") {
       const summary = filters.source && filters.source !== payload.summary.source ? null : payload.summary;
       return json({ kind, filters, summary, quality: summary?.qualityBadge ?? "not_loaded" });
