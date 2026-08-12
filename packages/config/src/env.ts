@@ -1,8 +1,10 @@
 export type RuntimeEnvironment = "local" | "staging" | "production";
+export type PortalReadBackend = "fixture" | "postgres";
 
 export type ServerEnv = {
   appBaseUrl: string;
   environment: RuntimeEnvironment;
+  portalReadBackend: PortalReadBackend;
   databaseUrl?: string;
   redisUrl?: string;
   objectStorageEndpoint?: string;
@@ -18,6 +20,12 @@ const requiredProductionNames = [
 function resolveEnvironment(value: string | undefined): RuntimeEnvironment {
   if (value === "production" || value === "staging") return value;
   return "local";
+}
+
+function resolvePortalReadBackend(value: string | undefined): PortalReadBackend {
+  if (!value || value === "fixture") return "fixture";
+  if (value === "postgres") return "postgres";
+  throw new Error("INVALID_READ_BACKEND");
 }
 
 export function loadServerEnv(
@@ -37,6 +45,7 @@ export function loadServerEnv(
   return {
     appBaseUrl: input.APP_BASE_URL?.trim() || "http://localhost:3000",
     environment,
+    portalReadBackend: resolvePortalReadBackend(input.PORTAL_READ_BACKEND?.trim()),
     databaseUrl: input.DATABASE_URL?.trim(),
     redisUrl: input.REDIS_URL?.trim(),
     objectStorageEndpoint: input.OBJECT_STORAGE_ENDPOINT?.trim(),
