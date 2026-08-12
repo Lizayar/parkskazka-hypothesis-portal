@@ -11,7 +11,7 @@ export class AdapterError extends Error {
     message: string,
     readonly retryable = false,
   ) {
-    super(message);
+    super(`${code}: ${message}`);
     this.name = "AdapterError";
   }
 }
