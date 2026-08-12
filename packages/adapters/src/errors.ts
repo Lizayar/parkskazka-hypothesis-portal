@@ -6,6 +6,7 @@ export type AdapterErrorCode =
   | "INVALID_CURRENCY"
   | "INVALID_HIERARCHY"
   | "INVALID_UTM"
+  | "INVALID_CREATIVE"
   | "SOURCE_FAILURE";
 
 export class AdapterError extends Error {
