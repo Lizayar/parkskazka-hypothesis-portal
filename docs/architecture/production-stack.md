@@ -54,5 +54,5 @@ Blueprint не создаёт Render workspace, не добавляет DNS/cust
 - Workers KV хранит кэш/locks вместо Render Key Value;
 - R2 хранит объекты и креативы.
 
-Cloudflare free runtime не требует 30-дневного удаления D1, но имеет квоты и SQLite-семантику. В конфиге оставлены только binding names и безопасные placeholders; `database_id`, KV namespace id и R2 credentials добавляются владельцем вручную после создания ресурсов. До подключения D1 Worker явно остаётся на fixture backend и не выполняет silent fallback.
+Cloudflare free runtime не требует 30-дневного удаления D1, но имеет квоты и SQLite-семантику. 12 августа 2026 созданы D1 `parkskazka-hypotheses` и KV `CACHE`, применена миграция `0001_portal_core.sql`, а Worker опубликован с fixture backend. Статическая оболочка опубликована на Pages: `https://parkskazka-hypothesis-portal.pages.dev/`. R2 bucket пока не создан: Cloudflare требует предварительно включить R2 в Dashboard; binding `MEDIA` намеренно закомментирован до этого переключателя. До подключения D1-читателя Worker явно остаётся на fixture backend и не выполняет silent fallback.
 

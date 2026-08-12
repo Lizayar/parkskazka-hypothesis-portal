@@ -11,14 +11,16 @@ crons = ["0 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "parkskazka-hypotheses"
-database_id = "REPLACE_AFTER_CLOUDFLARE_CREATE"
+database_id = "34101c6d-5757-477b-93d8-97684506ce3c"
 migrations_dir = "cloudflare/d1/migrations"
 
 [[kv_namespaces]]
 binding = "CACHE"
-id = "REPLACE_AFTER_CLOUDFLARE_CREATE"
+id = "f49845c5dc46467d88ff61d0bb60960e"
 
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "parkskazka-hypothesis-assets"
+# R2 is intentionally enabled after the account-level R2 switch is turned on
+# in Cloudflare Dashboard. Keep the binding commented until the bucket exists.
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "parkskazka-hypothesis-assets"
 

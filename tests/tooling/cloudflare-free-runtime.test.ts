@@ -11,7 +11,9 @@ describe("Cloudflare free runtime contract", () => {
     expect(wrangler).toContain("[[kv_namespaces]]");
     expect(wrangler).toContain("[[r2_buckets]]");
     expect(wrangler).toContain('crons = ["0 * * * *"]');
-    expect(wrangler).toContain("REPLACE_AFTER_CLOUDFLARE_CREATE");
+    expect(wrangler).toMatch(/database_id = "[0-9a-f-]{36}"/);
+    expect(wrangler).toMatch(/id = "[0-9a-f]{32}"/i);
+    expect(wrangler).toContain("R2 is intentionally enabled after the account-level R2 switch");
     expect(wrangler).not.toMatch(/(?:api[_-]?token|secret|password|Bearer)\s*[=:]\s*[^\s#]+/i);
   });
 
