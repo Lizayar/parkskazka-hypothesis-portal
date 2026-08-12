@@ -35,3 +35,16 @@
 
 Публичный GitHub-репозиторий создан: `Lizayar/parkskazka-hypothesis-portal`. В нём опубликован текущий документальный срез; подключение рекламных кабинетов и реализация приложения выполняются следующими этапами roadmap.
 
+## Локальный foundation
+
+Task 2 добавляет pnpm workspace с `apps/web`, `apps/api`, `apps/worker` и пакетами `config`, `domain`, `db`, `adapters`, `ui`. Это каркас без OAuth callback, миграций и запросов к рекламным API.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+pnpm typecheck
+pnpm --filter @portal/web dev
+```
+
+Для disposable PostgreSQL, Redis и MinIO скопируйте `.env.example` в локальный env-файл и задайте значения только в локальном secret store; env-файл не коммитится.
+
