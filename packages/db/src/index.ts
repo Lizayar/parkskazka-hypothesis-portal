@@ -9,6 +9,8 @@ export { InMemoryAuditRepository } from "./repositories/audit-repository.js";
 export { InMemoryPortalRepository } from "./repositories/portal-repository.js";
 export { InMemorySnapshotRepository } from "./repositories/snapshot-repository.js";
 export { InMemorySyncRunRepository } from "./repositories/sync-run-repository.js";
+export { FixturePortalReadRepository } from "./repositories/read-repository.js";
+export type { PortalReadRepository } from "./repositories/read-repository.js";
 export { createParkSkazkaFixture } from "./fixtures/park-skazka-fixture.js";
 export * from "./schema/core.js";
 export * from "./schema/experiments.js";
