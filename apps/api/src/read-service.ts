@@ -2,6 +2,11 @@ import { createPostgresReadRepository, type PortalReadQuery, type PortalReadRow,
 import type { PortalReadBackend } from "@portal/config/env";
 import { createParkSkazkaFixture } from "@portal/db/fixtures/park-skazka-fixture";
 import { FixturePortalReadRepository, type PortalReadRepository } from "@portal/db/repositories/read-repository";
+import {
+  mapPostgresRowsToReadModels,
+  type MetricObservationInput,
+  type PostgresReadModels,
+} from "@portal/ui/postgres-read-mapper";
 import { handleReadRequest } from "./read-routes.js";
 
 export type ApiReadBackend = "fixture" | "postgres";
@@ -23,6 +28,10 @@ export type ApiReadService = {
   backend: ApiReadBackend;
   handle(request: Request): Promise<Response>;
   readRows(query: PortalReadQuery): Promise<readonly PortalReadRow[]>;
+  readModels(
+    query: PortalReadQuery,
+    observations?: readonly MetricObservationInput[],
+  ): Promise<PostgresReadModels>;
 };
 
 function json(body: unknown, status: number): Response {
@@ -44,6 +53,9 @@ export function createApiReadService(options: ApiReadServiceOptions = {}): ApiRe
       async readRows() {
         return [];
       },
+      async readModels() {
+        throw new Error("READ_MODELS_POSTGRES_ONLY");
+      },
     };
   }
 
@@ -56,6 +68,10 @@ export function createApiReadService(options: ApiReadServiceOptions = {}): ApiRe
       return json({ error: "POSTGRES_READ_ROUTE_NOT_MAPPED" }, 501);
     },
     readRows: repository.getPortalReadRows,
+    async readModels(query, observations = []) {
+      const rows = await repository.getPortalReadRows(query);
+      return mapPostgresRowsToReadModels(rows, observations);
+    },
   };
 }
 
