@@ -63,5 +63,61 @@ describe("API read service factory", () => {
 
     expect(service.backend).toBe("fixture");
   });
+
+  it("maps injected postgres rows into hypotheses, explorer and metrics status", async () => {
+    const service = createApiReadService({
+      backend: "postgres",
+      postgresExecutor: {
+        async query<Row extends Record<string, unknown>>() {
+          return [{
+            workspace_id: "workspace-1",
+            workspace_slug: "parkskazka",
+            workspace_name: "Park Skazka",
+            timezone: "Europe/Moscow",
+            campaign_id: "campaign-1",
+            campaign_name: "Summer",
+            source: "vk_ads",
+            ad_group_id: "group-1",
+            ad_group_name: "Families",
+            ad_id: "ad-1",
+            ad_name: "Control A",
+            creative_id: "creative-1",
+            creative_name: "Family weekend",
+            hypothesis_id: "hypothesis-1",
+            hypothesis_title: "Family hook",
+            hypothesis_status: "running",
+            hypothesis_owner_subject_id: "github|owner",
+            primary_metric: "cost_per_lead",
+            starts_on: "2026-08-12",
+            ends_on: "2026-08-19",
+            decision_outcome: "iterate",
+          }] as unknown as Row[];
+        },
+      },
+    });
+
+    const models = await service.readModels({
+      workspaceId: "workspace-1",
+      from: "2026-08-12",
+      to: "2026-08-19",
+    });
+
+    expect(models.hypotheses).toMatchObject([
+      expect.objectContaining({ id: "hypothesis-1", decision: "iterate" }),
+    ]);
+    expect(models.tree[0]?.adGroups[0]?.ads[0]?.creatives[0]).toEqual({
+      creativeId: "creative-1",
+      creativeName: "Family weekend",
+    });
+    expect(models.metrics.status).toBe("not_loaded");
+  });
+
+  it("does not silently use fixture models for the fixture readModels path", async () => {
+    await expect(createApiReadService({ backend: "fixture" }).readModels({
+      workspaceId: "workspace-1",
+      from: "2026-08-12",
+      to: "2026-08-19",
+    })).rejects.toThrow("READ_MODELS_POSTGRES_ONLY");
+  });
 });
 
