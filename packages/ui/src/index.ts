@@ -13,4 +13,5 @@ export const defaultPortalNavigation: readonly PortalNavItem[] = [
   { href: "/data-quality", label: "Data quality" },
 ];
 export * from "./read-models.js";
+export * from "./dashboard-shell.js";
 
