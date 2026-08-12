@@ -14,4 +14,5 @@ export const defaultPortalNavigation: readonly PortalNavItem[] = [
 ];
 export * from "./read-models.js";
 export * from "./dashboard-shell.js";
+export * from "./postgres-read-mapper.js";
 
