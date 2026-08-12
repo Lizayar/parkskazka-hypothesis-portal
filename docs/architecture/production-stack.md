@@ -44,3 +44,15 @@ Blueprint не создаёт Render workspace, не добавляет DNS/cust
 
 Ограничения Render Free: Postgres имеет 1 GB и истекает через 30 дней без backup/PITR; Key Value работает только в памяти и теряет данные при restart; Web Services могут засыпать после простоя и делят месячный лимит часов workspace. Этот профиль предназначен для проверки UI/API, а не для production.
 
+## Постоянный бесплатный контур Cloudflare
+
+Если нельзя принимать платёжные условия Render, используйте `wrangler.toml` и `cloudflare/pages/index.html`:
+
+- Pages публикует static shell;
+- Worker `apps/edge/src/index.ts` обслуживает read-only API и Cron Trigger;
+- D1 хранит реляционные данные вместо Postgres;
+- Workers KV хранит кэш/locks вместо Render Key Value;
+- R2 хранит объекты и креативы.
+
+Cloudflare free runtime не требует 30-дневного удаления D1, но имеет квоты и SQLite-семантику. В конфиге оставлены только binding names и безопасные placeholders; `database_id`, KV namespace id и R2 credentials добавляются владельцем вручную после создания ресурсов. До подключения D1 Worker явно остаётся на fixture backend и не выполняет silent fallback.
+
