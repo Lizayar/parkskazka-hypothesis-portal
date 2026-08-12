@@ -1,0 +1,23 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Local data and runtime output
+data/
+storage/
+tmp/
+coverage/
+*.log
+
+# Tooling
+node_modules/
+.next/
+dist/
+playwright-report/
+test-results/
+
+
