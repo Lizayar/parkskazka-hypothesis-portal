@@ -11,6 +11,12 @@ export { InMemorySnapshotRepository } from "./repositories/snapshot-repository.j
 export { InMemorySyncRunRepository } from "./repositories/sync-run-repository.js";
 export { FixturePortalReadRepository } from "./repositories/read-repository.js";
 export type { PortalReadRepository } from "./repositories/read-repository.js";
+export { createPostgresReadRepository } from "./repositories/postgres-read-repository.js";
+export type {
+  PortalReadQuery,
+  PortalReadRow,
+  SqlExecutor,
+} from "./repositories/postgres-read-repository.js";
 export { createParkSkazkaFixture } from "./fixtures/park-skazka-fixture.js";
 export * from "./schema/core.js";
 export * from "./schema/experiments.js";
