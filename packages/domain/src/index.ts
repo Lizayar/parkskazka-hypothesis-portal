@@ -6,4 +6,5 @@ export type PortalHealth = {
 
 export type ReadOnlySource = "yandex_metrica" | "avito_ads" | "vk_ads" | "telegram_ads";
 export * from "./metrics/attribution.js";
+export * from "./experiments/lifecycle.js";
 
