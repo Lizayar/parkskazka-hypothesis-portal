@@ -2,6 +2,9 @@ import type { ReadOnlySource } from "@portal/domain/index";
 
 export * from "./contracts.js";
 export * from "./errors.js";
+export * from "./yandex-metrica/adapter.js";
+export * from "./yandex-metrica/fixtures.js";
+export * from "./yandex-metrica/mapper.js";
 
 export type AdapterCapability = {
   source: ReadOnlySource;
