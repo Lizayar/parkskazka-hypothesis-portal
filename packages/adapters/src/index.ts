@@ -1,5 +1,8 @@
 import type { ReadOnlySource } from "@portal/domain/index";
 
+export * from "./contracts.js";
+export * from "./errors.js";
+
 export type AdapterCapability = {
   source: ReadOnlySource;
   status: "discovery" | "supported" | "unsupported";
