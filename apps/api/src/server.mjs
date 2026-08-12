@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 
 const port = Number(process.env.API_PORT || 3001);
+const host = process.env.API_HOST || "127.0.0.1";
 const backend = process.env.PORTAL_READ_BACKEND || "fixture";
 
 const fixture = {
@@ -82,7 +83,7 @@ function handleRequest(request, response) {
   return json(response, { kind, filters, tree: fixture.tree });
 }
 
-createServer(handleRequest).listen(port, "127.0.0.1", () => {
-  console.log(`api read server listening on http://127.0.0.1:${port}`);
+createServer(handleRequest).listen(port, host, () => {
+  console.log(`api read server listening on http://${host}:${port}`);
 });
 
