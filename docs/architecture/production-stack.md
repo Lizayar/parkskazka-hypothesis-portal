@@ -38,3 +38,9 @@ R2 credentials должны быть scoped только на нужный bucke
 
 Blueprint не создаёт Render workspace, не добавляет DNS/custom domain, не вводит OAuth callback URL и не публикует секреты. Эти действия выполняются вручную после ревью стоимости, backup/PITR и OAuth домена.
 
+## Бесплатный preview-профиль
+
+Для тестового запуска без платёжных данных используйте `render.free.yaml`. Он создаёт только два Free Web Service, Free Postgres и Free Key Value; Worker и Cron намеренно исключены, потому что Render не предлагает им Free instance types. Такой preview не выполняет автоматическую синхронизацию рекламных кабинетов.
+
+Ограничения Render Free: Postgres имеет 1 GB и истекает через 30 дней без backup/PITR; Key Value работает только в памяти и теряет данные при restart; Web Services могут засыпать после простоя и делят месячный лимит часов workspace. Этот профиль предназначен для проверки UI/API, а не для production.
+
