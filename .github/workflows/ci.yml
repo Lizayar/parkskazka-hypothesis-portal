@@ -25,6 +25,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm api:runtime:check
+      - run: pnpm deploy:acceptance
       - name: Secret-shaped value scan
         shell: bash
         run: |
