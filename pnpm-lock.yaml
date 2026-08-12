@@ -18,6 +18,22 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@22.20.1)
 
+  apps/api: {}
+
+  apps/web: {}
+
+  apps/worker: {}
+
+  packages/adapters: {}
+
+  packages/config: {}
+
+  packages/db: {}
+
+  packages/domain: {}
+
+  packages/ui: {}
+
 packages:
 
   '@esbuild/aix-ppc64@0.28.2':
