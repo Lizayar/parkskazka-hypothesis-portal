@@ -9,6 +9,8 @@ export default defineConfig({
       "@portal/db": resolve(__dirname, "packages/db/src"),
       "@portal/adapters": resolve(__dirname, "packages/adapters/src"),
       "@portal/ui": resolve(__dirname, "packages/ui/src"),
+      "@portal/api": resolve(__dirname, "apps/api/src"),
+      "@portal/web": resolve(__dirname, "apps/web/src"),
     },
   },
   test: {
