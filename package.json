@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:smoke": "node tests/smoke/local-services-smoke.mjs",
     "api:runtime:check": "node tests/tooling/api-runtime-check.mjs",
+    "deploy:acceptance": "node tests/tooling/deployment-acceptance.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
