@@ -1,0 +1,24 @@
+name = "parkskazka-hypothesis-edge"
+main = "apps/edge/src/index.ts"
+compatibility_date = "2026-08-12"
+
+[vars]
+READ_BACKEND = "fixture"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "parkskazka-hypotheses"
+database_id = "REPLACE_AFTER_CLOUDFLARE_CREATE"
+migrations_dir = "cloudflare/d1/migrations"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_AFTER_CLOUDFLARE_CREATE"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "parkskazka-hypothesis-assets"
+
