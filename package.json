@@ -5,6 +5,8 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "scripts": {
+    "dev": "pnpm --filter @portal/web dev",
+    "lint": "tsc --noEmit",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
