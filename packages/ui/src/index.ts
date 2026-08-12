@@ -12,4 +12,5 @@ export const defaultPortalNavigation: readonly PortalNavItem[] = [
   { href: "/creative-lab", label: "Creative Lab" },
   { href: "/data-quality", label: "Data quality" },
 ];
+export * from "./read-models.js";
 
