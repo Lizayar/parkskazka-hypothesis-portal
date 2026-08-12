@@ -21,8 +21,11 @@
 - [Roadmap и критерии релизов](docs/ROADMAP.md)
 - [Расширенный план сборки](docs/BUILD-PLAN.md)
 - [Инженерный task-by-task план](docs/superpowers/plans/2026-08-12-hypothesis-portal-build.md)
+- [OAuth/OIDC контракт](docs/OAUTH-CONTRACT.md)
+- [Модель угроз](docs/SECURITY-THREAT-MODEL.md)
 - [ADR: хранилище и границы коннекторов](docs/adr/0001-postgres-snapshots-adapters.md)
 - [ADR: экспериментальный контур и read-only управление](docs/adr/0002-experiment-lineage-read-only.md)
+- [ADR: OAuth-only публичный репозиторий](docs/adr/0003-oauth-only-public-repository.md)
 
 ## Канонический принцип
 
