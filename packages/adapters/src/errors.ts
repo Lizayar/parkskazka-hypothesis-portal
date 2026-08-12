@@ -3,6 +3,9 @@ export type AdapterErrorCode =
   | "INVALID_PERIOD"
   | "INVALID_TIMEZONE"
   | "INVALID_SCHEMA"
+  | "INVALID_CURRENCY"
+  | "INVALID_HIERARCHY"
+  | "INVALID_UTM"
   | "SOURCE_FAILURE";
 
 export class AdapterError extends Error {
