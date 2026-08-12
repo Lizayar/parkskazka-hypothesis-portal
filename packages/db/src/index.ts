@@ -7,6 +7,8 @@ export type { AuditEvent, AuditEventInput, SessionRecord } from "./schema/auth.j
 export type { AuditRepository } from "./repositories/audit-repository.js";
 export { InMemoryAuditRepository } from "./repositories/audit-repository.js";
 export { InMemoryPortalRepository } from "./repositories/portal-repository.js";
+export { InMemorySnapshotRepository } from "./repositories/snapshot-repository.js";
+export { InMemorySyncRunRepository } from "./repositories/sync-run-repository.js";
 export { createParkSkazkaFixture } from "./fixtures/park-skazka-fixture.js";
 export * from "./schema/core.js";
 export * from "./schema/experiments.js";
