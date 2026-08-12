@@ -31,8 +31,8 @@ export type AdapterStatsRequest = AdapterListRequest & {
 export interface ReadOnlyAdsAdapter {
   readonly source: Source;
   discoverCapabilities(): Promise<CapabilityReport>;
-  listObjects(request?: AdapterListRequest): AsyncIterable<AdapterPage>;
-  getStats(request?: AdapterStatsRequest): AsyncIterable<AdapterPage>;
+  listObjects(request?: AdapterListRequest): AsyncGenerator<AdapterPage>;
+  getStats(request?: AdapterStatsRequest): AsyncGenerator<AdapterPage>;
 }
 
 export type UnsupportedAdapter = {
