@@ -13,6 +13,7 @@ export type CapabilityReport = {
   supported: boolean;
   objectLevels: readonly ObjectLevel[];
   metrics: readonly string[];
+  extractionMethod?: "api" | "browser_export" | "file_import";
   reason?: "provider_unavailable" | "scope_not_granted" | "endpoint_unsupported";
 };
 
