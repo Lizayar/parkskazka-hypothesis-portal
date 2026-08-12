@@ -11,6 +11,7 @@ export default defineConfig({
       "@portal/ui": resolve(__dirname, "packages/ui/src"),
       "@portal/api": resolve(__dirname, "apps/api/src"),
       "@portal/web": resolve(__dirname, "apps/web/src"),
+      "@portal/worker": resolve(__dirname, "apps/worker/src"),
     },
   },
   test: {
