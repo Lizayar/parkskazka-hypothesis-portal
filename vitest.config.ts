@@ -12,6 +12,7 @@ export default defineConfig({
       "@portal/api": resolve(__dirname, "apps/api/src"),
       "@portal/web": resolve(__dirname, "apps/web/src"),
       "@portal/worker": resolve(__dirname, "apps/worker/src"),
+      "@portal/edge": resolve(__dirname, "apps/edge/src"),
     },
   },
   test: {
