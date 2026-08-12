@@ -15,7 +15,8 @@
       "@portal/adapters/*": ["packages/adapters/src/*.ts"],
       "@portal/ui/*": ["packages/ui/src/*.ts"],
       "@portal/api/*": ["apps/api/src/*.ts"],
-      "@portal/web/*": ["apps/web/src/*.ts"]
+      "@portal/web/*": ["apps/web/src/*.ts"],
+      "@portal/worker/*": ["apps/worker/src/*.ts"]
     }
   },
   "include": ["apps/**/*.ts", "packages/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
