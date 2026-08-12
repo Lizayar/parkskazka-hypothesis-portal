@@ -8,6 +8,9 @@ export * from "./yandex-metrica/mapper.js";
 export * from "./vk-ads/adapter.js";
 export * from "./vk-ads/fixtures.js";
 export * from "./vk-ads/mapper.js";
+export * from "./avito-ads/adapter.js";
+export * from "./avito-ads/fixtures.js";
+export * from "./avito-ads/mapper.js";
 
 export type AdapterCapability = {
   source: ReadOnlySource;
