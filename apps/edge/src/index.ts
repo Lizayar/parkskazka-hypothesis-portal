@@ -25,6 +25,9 @@ export type EdgeEnv = {
 
 export type ScheduledControllerLike = { scheduledTime?: number };
 
+import { readD1Hypotheses, readD1Summary } from "./d1-read.js";
+import { PUBLIC_MEDIA_MANIFEST } from "./media-manifest.js";
+
 const fixture = {
   source: "vk_ads",
   summary: {
@@ -98,19 +101,42 @@ export async function handleEdgeRequest(request: Request, env: EdgeEnv = {}): Pr
       },
     });
   }
-  if (kind !== "summary" && kind !== "hypotheses" && kind !== "explorer") {
+  if (kind !== "summary" && kind !== "hypotheses" && kind !== "explorer" && kind !== "media") {
     return json({ error: "NOT_FOUND" }, 404);
-  }
-  if ((env.READ_BACKEND ?? "fixture") === "d1") {
-    return json({ error: "D1_READ_ROUTE_NOT_MAPPED" }, 501);
   }
 
   const source = url.searchParams.get("source");
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
+  const validDate = (value: string | null) => value === null || /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const validSource = (value: string | null) => value === null || /^[a-z][a-z0-9_-]{0,63}$/i.test(value);
+  if (!validDate(from) || !validDate(to) || !validSource(source)) return json({ error: "INVALID_READ_FILTER" }, 400);
   const filters = {
-    from: url.searchParams.get("from"),
-    to: url.searchParams.get("to"),
+    from,
+    to,
     ...(source ? { source } : {}),
   };
+
+  if (kind === "media") return json({ kind, ...PUBLIC_MEDIA_MANIFEST });
+
+  if ((env.READ_BACKEND ?? "fixture") === "d1") {
+    if (!env.DB) return json({ error: "D1_BINDING_REQUIRED" }, 503);
+    try {
+      const query = { ...(source ? { source } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
+      if (kind === "summary") {
+        const result = await readD1Summary(env.DB, query);
+        return json({ kind, filters, ...result });
+      }
+      if (kind === "hypotheses") {
+        const items = await readD1Hypotheses(env.DB, query);
+        return json({ kind, filters, items });
+      }
+      return json({ kind, filters, tree: [], quality: "lineage_not_available" });
+    } catch {
+      return json({ error: "D1_READ_ERROR" }, 503);
+    }
+  }
+
   if (source && source !== fixture.source) {
     if (kind === "summary") return json({ kind, filters, summary: null, quality: "not_loaded" });
     if (kind === "hypotheses") return json({ kind, filters, items: [] });
