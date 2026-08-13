@@ -60,3 +60,5 @@ Task 31 добавляет read-only export runner: он вызывает тол
 
 Task 32 добавляет ручной JSON export intake с ограничением 5 MiB/10 000 строк, проверкой source/schema/period и блокировкой secret-like полей до mapper-а. Reconciliation суммирует только наблюдаемые normalized metrics: `matched`, `partial`, `mismatch` и `not_comparable` различают подтверждённые, неполные, расходящиеся и не сопоставимые экспорты. Fixture-based checks являются контрактными тестами и не считаются live cabinet data.
 
+Task 33 добавляет approval gate перед D1 write: только scope-matched reconciliation со статусом `matched`, непустым оператором и безопасными workspace identifiers получает parameterized statements. Duplicate content hash возвращает `skipped_duplicate` без вызова executor; D1 executor injected и не выполняется автоматически для непроверенного real export.
+
