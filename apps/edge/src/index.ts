@@ -25,7 +25,7 @@ export type EdgeEnv = {
 
 export type ScheduledControllerLike = { scheduledTime?: number };
 
-import { readD1Hypotheses, readD1Summary } from "./d1-read.js";
+import { readD1Explorer, readD1Hypotheses, readD1Summary } from "./d1-read.js";
 import { PUBLIC_MEDIA_MANIFEST } from "./media-manifest.js";
 
 const fixture = {
@@ -131,7 +131,8 @@ export async function handleEdgeRequest(request: Request, env: EdgeEnv = {}): Pr
         const items = await readD1Hypotheses(env.DB, query);
         return json({ kind, filters, items });
       }
-      return json({ kind, filters, tree: [], quality: "lineage_not_available" });
+      const result = await readD1Explorer(env.DB, query);
+      return json({ kind, filters, ...result });
     } catch {
       return json({ error: "D1_READ_ERROR" }, 503);
     }

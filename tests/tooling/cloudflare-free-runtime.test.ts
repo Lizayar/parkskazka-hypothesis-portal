@@ -47,6 +47,7 @@ describe("Cloudflare free runtime contract", () => {
                 if (query.includes("GROUP BY mo.metric_key")) {
                   return { results: [{ metric_key: "leads", value: 2, quality_status: "valid" }] as T[] };
                 }
+                if (query.includes("FROM campaign c")) return { results: [] as T[] };
                 return { results: [{ id: "h1", title: "D1 hook", status: "planned", owner_subject_id: "owner", starts_on: "2026-08-12", ends_on: "2026-08-19", primary_metric: "leads", decision: "inconclusive", source: "vk_ads" }] as T[] };
               },
             };
@@ -79,6 +80,22 @@ describe("Cloudflare free runtime contract", () => {
     expect(await invalid.json()).toEqual({ error: "INVALID_READ_FILTER" });
   });
 
+  it("maps complete D1 lineage and marks incomplete rows without inventing children", async () => {
+    const db = {
+      prepare(query: string) {
+        return { bind() { return { async all<T>() {
+          if (query.includes("FROM campaign c")) {
+            return { results: [{ campaign_id: "c1", campaign_name: "Summer", source: "vk_ads", ad_group_id: "g1", ad_group_name: "Families", ad_id: "a1", ad_name: "Control", creative_id: "cr1", creative_name: "Hook A" }] as T[] };
+          }
+          return { results: [] as T[] };
+        } }; }, };
+      },
+    };
+    const response = await edgeWorker.fetch(new Request("https://edge.example/api/explorer?source=vk_ads&from=2026-08-12"), { READ_BACKEND: "d1", DB: db });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ quality: "valid", tree: [{ campaignId: "c1", adGroups: [{ ads: [{ creatives: [{ creativeId: "cr1" }] }] }] }] });
+  });
+
   it("contains a Pages static shell", () => {
     const html = readFileSync(resolve(process.cwd(), "cloudflare/pages/index.html"), "utf8");
     expect(html).toContain("Park Skazka Hypothesis Portal");
@@ -100,6 +117,7 @@ describe("Cloudflare free runtime contract", () => {
     expect(media).toContain("GitHub Releases");
     const seed = readFileSync(resolve(process.cwd(), "cloudflare/d1/seed.sql"), "utf8");
     expect(seed).toContain("INSERT OR IGNORE INTO hypothesis");
+    expect(seed).toContain("INSERT OR IGNORE INTO source_snapshot");
     expect(seed).not.toMatch(/(?:api[_-]?token|secret|password|Bearer|postgres:\/\/)/i);
   });
 });

@@ -24,6 +24,18 @@ type HypothesisRow = {
   source: string | null;
 };
 
+type ExplorerRow = {
+  campaign_id: string;
+  campaign_name: string;
+  source: string;
+  ad_group_id: string | null;
+  ad_group_name: string | null;
+  ad_id: string | null;
+  ad_name: string | null;
+  creative_id: string | null;
+  creative_name: string | null;
+};
+
 function dateClause(alias: string, query: D1ReadQuery): { sql: string; values: string[] } {
   const clauses: string[] = [];
   const values: string[] = [];
@@ -114,5 +126,62 @@ export async function readD1Hypotheses(db: D1DatabaseLike, query: D1ReadQuery) {
     primaryMetric: row.primary_metric,
     decision: row.decision,
   }));
+}
+
+export async function readD1Explorer(db: D1DatabaseLike, query: D1ReadQuery) {
+  const dates = dateClause("ss", query);
+  const source = sourceClause("ss", query);
+  const campaignSource = query.source ? " AND c.source = ?" : "";
+  const campaignValues = query.source ? [query.source] : [];
+  const result = await db
+    .prepare(
+      `SELECT c.id AS campaign_id, c.name AS campaign_name, c.source,
+              ag.id AS ad_group_id, ag.name AS ad_group_name,
+              a.id AS ad_id, a.name AS ad_name,
+              cr.id AS creative_id, cr.name AS creative_name
+       FROM campaign c
+       LEFT JOIN ad_group ag ON ag.campaign_id = c.id
+       LEFT JOIN ad a ON a.ad_group_id = ag.id
+       LEFT JOIN creative cr ON cr.id = a.creative_id
+       WHERE 1 = 1${campaignSource}
+         AND EXISTS (
+           SELECT 1 FROM source_snapshot ss
+           WHERE ss.account_id = c.account_id${dates.sql}${source.sql}
+         )
+       ORDER BY c.name ASC, ag.name ASC, a.name ASC, cr.name ASC`,
+    )
+    .bind(...campaignValues, ...dates.values, ...source.values)
+    .all<ExplorerRow>();
+
+  const rows = result.results as ExplorerRow[];
+  const campaigns = new Map<string, {
+    campaignId: string;
+    campaignName: string;
+    source: string;
+    adGroups: Array<{ adGroupId: string; adGroupName: string; ads: Array<{ adId: string; adName: string; creatives: Array<{ creativeId: string; creativeName: string }> }> }>;
+  }>();
+  let incomplete = false;
+  for (const row of rows) {
+    const campaign = campaigns.get(row.campaign_id) ?? { campaignId: row.campaign_id, campaignName: row.campaign_name, source: row.source, adGroups: [] };
+    campaigns.set(row.campaign_id, campaign);
+    if (!row.ad_group_id || !row.ad_group_name || !row.ad_id || !row.ad_name || !row.creative_id || !row.creative_name) {
+      incomplete = true;
+      continue;
+    }
+    let group = campaign.adGroups.find((item) => item.adGroupId === row.ad_group_id);
+    if (!group) {
+      group = { adGroupId: row.ad_group_id, adGroupName: row.ad_group_name, ads: [] };
+      campaign.adGroups.push(group);
+    }
+    let ad = group.ads.find((item) => item.adId === row.ad_id);
+    if (!ad) {
+      ad = { adId: row.ad_id, adName: row.ad_name, creatives: [] };
+      group.ads.push(ad);
+    }
+    if (!ad.creatives.some((item) => item.creativeId === row.creative_id)) {
+      ad.creatives.push({ creativeId: row.creative_id, creativeName: row.creative_name });
+    }
+  }
+  return { tree: [...campaigns.values()], quality: rows.length === 0 ? "lineage_not_available" : incomplete ? "lineage_incomplete" : "valid" } as const;
 }
 
