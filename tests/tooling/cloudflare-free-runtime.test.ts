@@ -9,7 +9,7 @@ describe("Cloudflare free runtime contract", () => {
     expect(wrangler).toContain('main = "apps/edge/src/index.ts"');
     expect(wrangler).toContain("[[d1_databases]]");
     expect(wrangler).toContain("[[kv_namespaces]]");
-    expect(wrangler).toContain("[[r2_buckets]]");
+    expect(wrangler).not.toMatch(/^\s*\[\[r2_buckets\]\]/m);
     expect(wrangler).toContain('crons = ["0 * * * *"]');
     expect(wrangler).toMatch(/database_id = "[0-9a-f-]{36}"/);
     expect(wrangler).toMatch(/id = "[0-9a-f]{32}"/i);
@@ -47,6 +47,9 @@ describe("Cloudflare free runtime contract", () => {
     const html = readFileSync(resolve(process.cwd(), "cloudflare/pages/index.html"), "utf8");
     expect(html).toContain("Park Skazka Hypothesis Portal");
     expect(html).toContain("/api/summary");
+    expect(html).toContain("/media/manifest.json");
+    const manifest = readFileSync(resolve(process.cwd(), "cloudflare/pages/media/manifest.json"), "utf8");
+    expect(JSON.parse(manifest)).toMatchObject({ storagePolicy: "pages-and-github-releases", public: true });
   });
 
   it("documents the permanent free contour and its explicit D1 boundary", () => {
@@ -54,6 +57,9 @@ describe("Cloudflare free runtime contract", () => {
     expect(docs).toContain("Постоянный бесплатный контур Cloudflare");
     expect(docs).toContain("SQLite-семантику");
     expect(docs).toContain("не выполняет silent fallback");
+    const media = readFileSync(resolve(process.cwd(), "docs/architecture/free-media-strategy.md"), "utf8");
+    expect(media).toContain("без платёжной подписки");
+    expect(media).toContain("GitHub Releases");
   });
 });
 

@@ -1,4 +1,4 @@
-# Production stack: Render + Postgres + Key Value + Cloudflare R2
+# Production stack: Cloudflare free contour with optional paid storage
 
 Елизавета, выбранная production-связка состоит из Render web/API, Render Background Worker и Cron Job, Render Postgres, Render Key Value (Redis-compatible Valkey) и Cloudflare R2 для объектов.
 
@@ -52,7 +52,7 @@ Blueprint не создаёт Render workspace, не добавляет DNS/cust
 - Worker `apps/edge/src/index.ts` обслуживает read-only API и Cron Trigger;
 - D1 хранит реляционные данные вместо Postgres;
 - Workers KV хранит кэш/locks вместо Render Key Value;
-- R2 хранит объекты и креативы.
+- Для варианта без оплаты R2 не используется: Pages публикует превью, GitHub Releases хранит публичные оригиналы, а D1 хранит только metadata/manifest.
 
-Cloudflare free runtime не требует 30-дневного удаления D1, но имеет квоты и SQLite-семантику. 12 августа 2026 созданы D1 `parkskazka-hypotheses` и KV `CACHE`, применена миграция `0001_portal_core.sql`, а Worker опубликован с fixture backend. Статическая оболочка опубликована на Pages: `https://parkskazka-hypothesis-portal.pages.dev/`. R2 bucket пока не создан: Cloudflare требует предварительно включить R2 в Dashboard; binding `MEDIA` намеренно закомментирован до этого переключателя. До подключения D1-читателя Worker явно остаётся на fixture backend и не выполняет silent fallback.
+Cloudflare free runtime не требует 30-дневного удаления D1, но имеет квоты и SQLite-семантику. 12 августа 2026 созданы D1 `parkskazka-hypotheses` и KV `CACHE`, применена миграция `0001_portal_core.sql`, а Worker опубликован с fixture backend. Статическая оболочка опубликована на Pages: `https://parkskazka-hypothesis-portal.pages.dev/`. R2 bucket не создаётся, потому что Dashboard предлагает подписку с автоматическим продлением; binding `MEDIA` намеренно закомментирован. Бесплатная media policy описана в `docs/architecture/free-media-strategy.md`. До подключения D1-читателя Worker явно остаётся на fixture backend и не выполняет silent fallback.
 
