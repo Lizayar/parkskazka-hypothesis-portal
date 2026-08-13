@@ -62,3 +62,5 @@ Task 32 добавляет ручной JSON export intake с ограничен
 
 Task 33 добавляет approval gate перед D1 write: только scope-matched reconciliation со статусом `matched`, непустым оператором и безопасными workspace identifiers получает parameterized statements. Duplicate content hash возвращает `skipped_duplicate` без вызова executor; D1 executor injected и не выполняется автоматически для непроверенного real export.
 
+Task 34 расширяет intake на CSV: quoted commas, escaped quotes и embedded newlines обрабатываются до mapper-а; malformed quotes, duplicate headers, uneven rows, secret-like fields и oversized files завершаются ошибкой. Реальный файл всё ещё должен быть предоставлен вручную, после чего выполняется mapper → reconciliation → approval → D1 executor.
+

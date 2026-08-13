@@ -17,6 +17,7 @@ export type ReadOnlyExportEnvelope<T> = {
 };
 
 export type ExportRowMapper<T> = (row: T, index: number) => Readonly<Record<string, unknown>>;
+export type CsvExportMetadata = Omit<ReadOnlyExportEnvelope<unknown>, "rows">;
 
 const MAX_JSON_BYTES = 5 * 1024 * 1024;
 const SECRET_KEY_RE = /(password|secret|token|authorization|api[_-]?key|access[_-]?key)/i;
@@ -47,6 +48,78 @@ function assertEnvelope(input: unknown): asserts input is ReadOnlyExportEnvelope
   if (envelope.rows.length > 10_000) throw new Error("TOO_MANY_EXPORT_ROWS");
 }
 
+export function parseCsvRecords(csv: string): readonly Readonly<Record<string, string>>[] {
+  if (typeof csv !== "string" || new TextEncoder().encode(csv).byteLength > MAX_JSON_BYTES) throw new Error("EXPORT_CSV_TOO_LARGE");
+  const text = csv.charCodeAt(0) === 0xfeff ? csv.slice(1) : csv;
+  const records: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  let quoteClosed = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"') {
+        if (text[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          quoted = false;
+          quoteClosed = true;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+    if (quoteClosed) {
+      if (char === ",") {
+        row.push(field);
+        field = "";
+        quoteClosed = false;
+      } else if (char === "\r" || char === "\n") {
+        row.push(field);
+        field = "";
+        quoteClosed = false;
+        if (char === "\r" && text[index + 1] === "\n") index += 1;
+        records.push(row);
+        row = [];
+      } else if (char.trim() !== "") {
+        throw new Error("INVALID_CSV_QUOTE");
+      }
+      continue;
+    }
+    if (char === '"' && field === "") {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\r" || char === "\n") {
+      row.push(field);
+      field = "";
+      if (char === "\r" && text[index + 1] === "\n") index += 1;
+      records.push(row);
+      row = [];
+    } else {
+      field += char;
+    }
+  }
+  if (quoted) throw new Error("UNCLOSED_CSV_QUOTE");
+  if (quoteClosed || field.length > 0 || row.length > 0) {
+    row.push(field);
+    records.push(row);
+  }
+  if (records.length === 0 || records[0]?.every((header) => header.trim() === "")) throw new Error("INVALID_CSV_HEADER");
+  const headers = records[0]!.map((header) => header.trim());
+  if (headers.some((header) => header === "") || new Set(headers).size !== headers.length) throw new Error("INVALID_CSV_HEADER");
+  const data = records.slice(1).filter((record) => record.some((value) => value !== ""));
+  if (data.length > 10_000) throw new Error("TOO_MANY_EXPORT_ROWS");
+  return data.map((values) => {
+    if (values.length !== headers.length) throw new Error("INVALID_CSV_ROW");
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+  });
+}
+
 export function createReadOnlyExportIntake<T>(source: Source, mapRow: ExportRowMapper<T>) {
   return {
     accept(input: ReadOnlyExportEnvelope<T>): NormalizedProviderBatch {
@@ -67,6 +140,10 @@ export function createReadOnlyExportIntake<T>(source: Source, mapRow: ExportRowM
         throw new Error("INVALID_EXPORT_JSON");
       }
       return this.accept(input as ReadOnlyExportEnvelope<T>);
+    },
+    acceptCsv(csv: string, metadata: CsvExportMetadata, mapCsvRow: ExportRowMapper<Record<string, string>>): NormalizedProviderBatch {
+      const rows = parseCsvRecords(csv);
+      return this.accept({ ...metadata, source, rows: rows.map((row, index) => mapCsvRow(row, index)) } as ReadOnlyExportEnvelope<T>);
     },
   };
 }
