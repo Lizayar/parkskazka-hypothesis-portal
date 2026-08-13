@@ -1,0 +1,25 @@
+{
+  "service": "api",
+  "runtime": "node-22",
+  "entry": "apps/api/src/server.mjs",
+  "bindHost": "127.0.0.1",
+  "portEnv": "API_PORT",
+  "healthPath": "/health",
+  "readOnly": true,
+  "readPaths": ["/api/summary", "/api/hypotheses", "/api/explorer"],
+  "mutationStatus": 405,
+  "externalSecretRefs": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "SESSION_ENCRYPTION_KEY",
+    "AUTH_GITHUB_SECRET",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY"
+  ],
+  "acceptanceChecks": [
+    "pnpm api:runtime:check",
+    "pnpm deploy:acceptance",
+    "pnpm test:smoke"
+  ]
+}
+
