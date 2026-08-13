@@ -64,3 +64,5 @@ Task 33 добавляет approval gate перед D1 write: только scope
 
 Task 34 расширяет intake на CSV: quoted commas, escaped quotes и embedded newlines обрабатываются до mapper-а; malformed quotes, duplicate headers, uneven rows, secret-like fields и oversized files завершаются ошибкой. Реальный файл всё ещё должен быть предоставлен вручную, после чего выполняется mapper → reconciliation → approval → D1 executor.
 
+Task 35 добавляет VK Ads schema registry: русские и английские aliases заголовков, `DD.MM.YYYY`/ISO даты, числа с пробелами и десятичной запятой, обязательные поля и currency validation. CSV превращается в campaign/ad_group/ad/creative normalized rows только после строгой схемы; это не подтверждает, что live export уже получен.
+
