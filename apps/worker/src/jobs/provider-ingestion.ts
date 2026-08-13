@@ -90,7 +90,7 @@ function canonicalMetricValues(values: unknown): NormalizedMetricValues | undefi
   const result: Record<string, number> = {};
   for (const key of Object.keys(values).sort()) {
     const value = (values as Record<string, unknown>)[key];
-    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("INVALID_METRIC_VALUE");
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new Error("INVALID_METRIC_VALUE");
     result[key] = value;
   }
   return Object.keys(result).length ? result : undefined;
@@ -108,7 +108,7 @@ function rawMetricValues(row: Record<string, unknown>): NormalizedMetricValues |
   for (const key of METRIC_KEYS) {
     const value = row[key];
     if (value !== undefined) {
-      if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("INVALID_METRIC_VALUE");
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new Error("INVALID_METRIC_VALUE");
       direct[key] = value;
     }
   }

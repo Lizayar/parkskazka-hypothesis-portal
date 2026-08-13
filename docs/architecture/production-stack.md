@@ -58,3 +58,5 @@ Cloudflare free runtime не требует 30-дневного удаления
 
 Task 31 добавляет read-only export runner: он вызывает только `discoverCapabilities`, `listObjects` и `getStats`, объединяет их в normalized batch, дедуплицирует по SHA-256 и сохраняет snapshot metadata через repository. Scheduled backfill получает явные account-конфигурации и ограниченное окно до 31 дня. D1 Explorer выбирает последний `fetched_at` snapshot только среди snapshots, пересекающих запрошенный диапазон; normalized campaign/ad-group/ad/creative rows должны быть связаны с выбранным snapshot, иначе ответ помечается `lineage_incomplete`.
 
+Task 32 добавляет ручной JSON export intake с ограничением 5 MiB/10 000 строк, проверкой source/schema/period и блокировкой secret-like полей до mapper-а. Reconciliation суммирует только наблюдаемые normalized metrics: `matched`, `partial`, `mismatch` и `not_comparable` различают подтверждённые, неполные, расходящиеся и не сопоставимые экспорты. Fixture-based checks являются контрактными тестами и не считаются live cabinet data.
+
