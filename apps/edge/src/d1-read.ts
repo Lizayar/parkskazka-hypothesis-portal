@@ -34,6 +34,10 @@ type ExplorerRow = {
   ad_name: string | null;
   creative_id: string | null;
   creative_name: string | null;
+  campaign_snapshot_id: string | null;
+  ad_group_snapshot_id: string | null;
+  ad_snapshot_id: string | null;
+  creative_snapshot_id: string | null;
 };
 
 function dateClause(alias: string, query: D1ReadQuery): { sql: string; values: string[] } {
@@ -131,26 +135,48 @@ export async function readD1Hypotheses(db: D1DatabaseLike, query: D1ReadQuery) {
 export async function readD1Explorer(db: D1DatabaseLike, query: D1ReadQuery) {
   const dates = dateClause("ss", query);
   const source = sourceClause("ss", query);
+  const newerDates = dateClause("newer", query);
+  const newerSource = sourceClause("newer", query);
   const campaignSource = query.source ? " AND c.source = ?" : "";
   const campaignValues = query.source ? [query.source] : [];
   const result = await db
     .prepare(
-      `SELECT c.id AS campaign_id, c.name AS campaign_name, c.source,
+      `WITH selected_snapshots AS (
+         SELECT ss.id, ss.source, ss.account_id
+         FROM source_snapshot ss
+         WHERE 1 = 1${dates.sql}${source.sql}
+           AND NOT EXISTS (
+             SELECT 1 FROM source_snapshot newer
+             WHERE newer.source = ss.source
+               AND newer.account_id = ss.account_id
+               AND newer.fetched_at > ss.fetched_at${newerDates.sql}${newerSource.sql}
+           )
+       )
+       SELECT c.id AS campaign_id, c.name AS campaign_name, c.source,
               ag.id AS ad_group_id, ag.name AS ad_group_name,
               a.id AS ad_id, a.name AS ad_name,
-              cr.id AS creative_id, cr.name AS creative_name
+              cr.id AS creative_id, cr.name AS creative_name,
+              pc.snapshot_id AS campaign_snapshot_id,
+              pg.snapshot_id AS ad_group_snapshot_id,
+              pa.snapshot_id AS ad_snapshot_id,
+              pcr.snapshot_id AS creative_snapshot_id
        FROM campaign c
+       JOIN selected_snapshots ss ON ss.account_id = c.account_id AND ss.source = c.source
        LEFT JOIN ad_group ag ON ag.campaign_id = c.id
        LEFT JOIN ad a ON a.ad_group_id = ag.id
        LEFT JOIN creative cr ON cr.id = a.creative_id
+       LEFT JOIN provider_object_snapshot pc
+         ON pc.snapshot_id = ss.id AND pc.object_level = 'campaign' AND pc.external_id = c.external_id
+       LEFT JOIN provider_object_snapshot pg
+         ON pg.snapshot_id = ss.id AND pg.object_level = 'ad_group' AND pg.external_id = ag.external_id
+       LEFT JOIN provider_object_snapshot pa
+         ON pa.snapshot_id = ss.id AND pa.object_level = 'ad' AND pa.external_id = a.external_id
+       LEFT JOIN provider_object_snapshot pcr
+         ON pcr.snapshot_id = ss.id AND pcr.object_level = 'creative' AND pcr.external_id = cr.external_id
        WHERE 1 = 1${campaignSource}
-         AND EXISTS (
-           SELECT 1 FROM source_snapshot ss
-           WHERE ss.account_id = c.account_id${dates.sql}${source.sql}
-         )
        ORDER BY c.name ASC, ag.name ASC, a.name ASC, cr.name ASC`,
     )
-    .bind(...campaignValues, ...dates.values, ...source.values)
+    .bind(...dates.values, ...source.values, ...newerDates.values, ...newerSource.values, ...campaignValues)
     .all<ExplorerRow>();
 
   const rows = result.results as ExplorerRow[];
@@ -164,7 +190,7 @@ export async function readD1Explorer(db: D1DatabaseLike, query: D1ReadQuery) {
   for (const row of rows) {
     const campaign = campaigns.get(row.campaign_id) ?? { campaignId: row.campaign_id, campaignName: row.campaign_name, source: row.source, adGroups: [] };
     campaigns.set(row.campaign_id, campaign);
-    if (!row.ad_group_id || !row.ad_group_name || !row.ad_id || !row.ad_name || !row.creative_id || !row.creative_name) {
+    if (!row.campaign_snapshot_id || !row.ad_group_id || !row.ad_group_name || !row.ad_group_snapshot_id || !row.ad_id || !row.ad_name || !row.ad_snapshot_id || !row.creative_id || !row.creative_name || !row.creative_snapshot_id) {
       incomplete = true;
       continue;
     }

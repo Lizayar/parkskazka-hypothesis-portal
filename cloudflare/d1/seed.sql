@@ -30,3 +30,10 @@ VALUES ('ad-control-d1', 'ad-group-family-d1', 'creative-family-d1', 'vk_ads', '
 INSERT OR IGNORE INTO source_snapshot (id, source, account_id, period_from, period_to, content_hash, schema_version, extraction_method, quality_status, fetched_at)
 VALUES ('snapshot-vk-d1', 'vk_ads', 'account-vk-parkskazka', '2026-08-12', '2026-08-12', 'sha256:fixture-snapshot', 'd1-lineage-v1', 'file_import', 'valid', '2026-08-13T07:00:00Z');
 
+INSERT OR IGNORE INTO provider_object_snapshot (snapshot_id, source, account_id, object_level, external_id, name, parent_external_id, content_hash)
+VALUES
+  ('snapshot-vk-d1', 'vk_ads', 'account-vk-parkskazka', 'campaign', 'vk-campaign-fixture', 'Summer Park Visit', NULL, NULL),
+  ('snapshot-vk-d1', 'vk_ads', 'account-vk-parkskazka', 'ad_group', 'vk-ad-group-fixture', 'Families 25-44', 'vk-campaign-fixture', NULL),
+  ('snapshot-vk-d1', 'vk_ads', 'account-vk-parkskazka', 'ad', 'vk-ad-control-fixture', 'Control rotation A', 'vk-ad-group-fixture', NULL),
+  ('snapshot-vk-d1', 'vk_ads', 'account-vk-parkskazka', 'creative', 'vk-creative-control-fixture', 'Control: family weekend', 'vk-ad-control-fixture', 'sha256:fixture-control');
+

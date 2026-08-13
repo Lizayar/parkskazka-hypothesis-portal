@@ -85,7 +85,7 @@ describe("Cloudflare free runtime contract", () => {
       prepare(query: string) {
         return { bind() { return { async all<T>() {
           if (query.includes("FROM campaign c")) {
-            return { results: [{ campaign_id: "c1", campaign_name: "Summer", source: "vk_ads", ad_group_id: "g1", ad_group_name: "Families", ad_id: "a1", ad_name: "Control", creative_id: "cr1", creative_name: "Hook A" }] as T[] };
+            return { results: [{ campaign_id: "c1", campaign_name: "Summer", source: "vk_ads", ad_group_id: "g1", ad_group_name: "Families", ad_id: "a1", ad_name: "Control", creative_id: "cr1", creative_name: "Hook A", campaign_snapshot_id: "snapshot-1", ad_group_snapshot_id: "snapshot-1", ad_snapshot_id: "snapshot-1", creative_snapshot_id: "snapshot-1" }] as T[] };
           }
           return { results: [] as T[] };
         } }; }, };
@@ -94,6 +94,20 @@ describe("Cloudflare free runtime contract", () => {
     const response = await edgeWorker.fetch(new Request("https://edge.example/api/explorer?source=vk_ads&from=2026-08-12"), { READ_BACKEND: "d1", DB: db });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ quality: "valid", tree: [{ campaignId: "c1", adGroups: [{ ads: [{ creatives: [{ creativeId: "cr1" }] }] }] }] });
+  });
+
+  it("applies the same backfill overlap to newer-snapshot selection", async () => {
+    let captured: { query: string; values: unknown[] } | undefined;
+    const db = {
+      prepare(query: string) {
+        return { bind(...values: unknown[]) { captured = { query, values }; return { async all<T>() { return { results: [] as T[] }; } }; } };
+      },
+    };
+    const response = await edgeWorker.fetch(new Request("https://edge.example/api/explorer?source=vk_ads&from=2026-08-12&to=2026-08-19"), { READ_BACKEND: "d1", DB: db });
+    expect(response.status).toBe(200);
+    expect(captured?.query).toContain("newer.period_to >= ?");
+    expect(captured?.query).toContain("provider_object_snapshot");
+    expect(captured?.values).toEqual(["2026-08-12", "2026-08-19", "vk_ads", "2026-08-12", "2026-08-19", "vk_ads", "vk_ads"]);
   });
 
   it("contains a Pages static shell", () => {
