@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@portal/config/*": ["packages/config/src/*.ts"],
+      "@portal/domain/*": ["packages/domain/src/*.ts"],
+      "@portal/db/*": ["packages/db/src/*.ts"],
+      "@portal/adapters/*": ["packages/adapters/src/*.ts"],
+      "@portal/ui/*": ["packages/ui/src/*.ts"],
+      "@portal/api/*": ["apps/api/src/*.ts"],
+      "@portal/web/*": ["apps/web/src/*.ts"],
+      "@portal/worker/*": ["apps/worker/src/*.ts"],
+      "@portal/edge/*": ["apps/edge/src/*.ts"]
+    }
+  },
+  "include": ["apps/**/*.ts", "packages/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
+}
+

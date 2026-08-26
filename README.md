@@ -21,8 +21,11 @@
 - [Roadmap и критерии релизов](docs/ROADMAP.md)
 - [Расширенный план сборки](docs/BUILD-PLAN.md)
 - [Инженерный task-by-task план](docs/superpowers/plans/2026-08-12-hypothesis-portal-build.md)
+- [OAuth/OIDC контракт](docs/OAUTH-CONTRACT.md)
+- [Модель угроз](docs/SECURITY-THREAT-MODEL.md)
 - [ADR: хранилище и границы коннекторов](docs/adr/0001-postgres-snapshots-adapters.md)
 - [ADR: экспериментальный контур и read-only управление](docs/adr/0002-experiment-lineage-read-only.md)
+- [ADR: OAuth-only публичный репозиторий](docs/adr/0003-oauth-only-public-repository.md)
 
 ## Канонический принцип
 
@@ -31,4 +34,17 @@
 ## Состояние репозитория
 
 Публичный GitHub-репозиторий создан: `Lizayar/parkskazka-hypothesis-portal`. В нём опубликован текущий документальный срез; подключение рекламных кабинетов и реализация приложения выполняются следующими этапами roadmap.
+
+## Локальный foundation
+
+Task 2 добавляет pnpm workspace с `apps/web`, `apps/api`, `apps/worker` и пакетами `config`, `domain`, `db`, `adapters`, `ui`. Task 3 добавляет безопасный auth foundation: GitHub subject allowlist, deny-by-default RBAC, workspace scope, opaque server-side sessions и append-only audit repository. Production OAuth callback, durable stores, миграции и запросы к рекламным API остаются следующими задачами roadmap.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+pnpm typecheck
+pnpm --filter @portal/web dev
+```
+
+Для disposable PostgreSQL, Redis и MinIO скопируйте `.env.example` в локальный env-файл и задайте значения только в локальном secret store; env-файл не коммитится.
 
