@@ -6,7 +6,7 @@ describe("published VK audit", () => {
     const audit = JSON.parse(await readFile("site/data/audit.json", "utf8"));
     const excludedCampaignIds = ["1221944", "1898108", "16109752", "16262003", "17138676", "17416462", "17558021", "17558098", "17810751", "17931142"];
 
-    expect(audit.summary).toMatchObject({ campaigns: 13, active_campaigns: 12, groups: 47, active_groups: 26, ads: 75, active_ads: 42, creatives_observed: 73, creatives_not_observed: 2 });
+    expect(audit.summary).toMatchObject({ campaigns: 13, active_campaigns: 12, groups: 47, active_groups: 26, ads: 75, active_ads: 42, creatives_observed: 73, creatives_not_observed: 2, unique_creatives: 49, duplicate_creative_sets: 18, ads_in_duplicate_creative_sets: 42 });
     expect(audit.meta.excluded_campaign_ids).toEqual(excludedCampaignIds);
     expect(new Set(audit.campaigns.map((item: { id: string }) => item.id)).size).toBe(13);
     expect(new Set(audit.groups.map((item: { id: string }) => item.id)).size).toBe(47);
@@ -32,6 +32,48 @@ describe("published VK audit", () => {
     expect(new Set(creativeFiles)).toEqual(new Set(audit.ads.filter((item: { creative: string | null }) => item.creative).map((item: { id: string }) => `${item.id}.webp`)));
   });
 
+  it("groups exact visual duplicates and recomputes aggregate rates", async () => {
+    const audit = JSON.parse(await readFile("site/data/audit.json", "utf8"));
+    const observedAds = audit.ads.filter((item: { creative_sha256: string | null }) => item.creative_sha256);
+    const groupedAdIds = audit.creatives.flatMap((item: { ad_ids: string[] }) => item.ad_ids);
+
+    expect(audit.creatives).toHaveLength(49);
+    expect(new Set(audit.creatives.map((item: { visual_sha256: string }) => item.visual_sha256)).size).toBe(49);
+    expect(groupedAdIds).toHaveLength(73);
+    expect(new Set(groupedAdIds)).toEqual(new Set(observedAds.map((item: { id: string }) => item.id)));
+    expect(audit.creatives.filter((item: { ad_count: number }) => item.ad_count > 1)).toHaveLength(18);
+    expect(audit.creatives.filter((item: { ad_count: number }) => item.ad_count > 1).reduce((sum: number, item: { ad_count: number }) => sum + item.ad_count, 0)).toBe(42);
+
+    const adTotals = observedAds.reduce((totals: { spend: number; impressions: number; clicks: number }, item: { spend_value: number | null; impressions_value: number | null; clicks_value: number | null }) => ({
+      spend: totals.spend + (item.spend_value ?? 0),
+      impressions: totals.impressions + (item.impressions_value ?? 0),
+      clicks: totals.clicks + (item.clicks_value ?? 0),
+    }), { spend: 0, impressions: 0, clicks: 0 });
+    const creativeTotals = audit.creatives.reduce((totals: { spend: number; impressions: number; clicks: number }, item: { spend_value: number | null; impressions_value: number | null; clicks_value: number | null }) => ({
+      spend: totals.spend + (item.spend_value ?? 0),
+      impressions: totals.impressions + (item.impressions_value ?? 0),
+      clicks: totals.clicks + (item.clicks_value ?? 0),
+    }), { spend: 0, impressions: 0, clicks: 0 });
+    expect(creativeTotals.spend).toBeCloseTo(adTotals.spend, 6);
+    expect(creativeTotals.impressions).toBe(adTotals.impressions);
+    expect(creativeTotals.clicks).toBe(adTotals.clicks);
+
+    for (const creative of audit.creatives.filter((item: { impressions_value: number | null; clicks_value: number | null }) => item.impressions_value && item.clicks_value !== null)) {
+      expect(creative.ctr_value).toBeCloseTo(creative.clicks_value / creative.impressions_value * 100, 10);
+      if (creative.clicks_value > 0 && creative.spend_value !== null) expect(creative.cpc_value).toBeCloseTo(creative.spend_value / creative.clicks_value, 10);
+      if (creative.spend_value !== null) expect(creative.cpm_value).toBeCloseTo(creative.spend_value / creative.impressions_value * 1000, 10);
+    }
+  });
+
+  it("preserves VK thousands separators when parsing delivery rows", async () => {
+    const audit = JSON.parse(await readFile("site/data/audit.json", "utf8"));
+    const byId = new Map(audit.ads.map((item: { id: string }) => [item.id, item]));
+
+    expect(byId.get("229960598")).toMatchObject({ impressions: "106 107", clicks: "3 109" });
+    expect(byId.get("230959709")).toMatchObject({ impressions: "454 187", clicks: "25 121" });
+    expect(byId.get("232034526")).toMatchObject({ impressions: "34 606", clicks: "1 069" });
+  });
+
   it("offers uncropped previews and a fullscreen creative viewer", async () => {
     const [html, app, css] = await Promise.all([
       readFile("site/index.html", "utf8"),
@@ -40,8 +82,12 @@ describe("published VK audit", () => {
     ]);
 
     expect(html).toContain('id="creative-viewer"');
+    expect(html).toContain('data-view="creatives"');
     expect(app).toContain("showModal()");
     expect(app).toContain('class="creative-open"');
+    expect(app).toContain("campaignRecord");
+    expect(app).toContain("groupRecord");
+    expect(app).toContain("uniqueCreativeCard");
     expect(css).toContain("height: auto");
     expect(css).toContain("grid-template-columns: repeat(2");
   });

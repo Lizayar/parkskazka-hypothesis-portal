@@ -29,6 +29,49 @@ const moneyNumber = (value) => {
   const parsed = Number(value.replace(/\s/g, "").replace(",", ".").replace("₽", ""));
   return Number.isFinite(parsed) ? parsed : null;
 };
+const decimalNumber = (value) => {
+  if (!value || value === "not_observed") return null;
+  const parsed = Number(String(value).replace(/\s/g, "").replace(",", ".").replace("₽", ""));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const integerNumber = (value) => {
+  if (!value || value === "not_observed" || !/^\d[\d\s]*$/.test(String(value))) return null;
+  const parsed = Number(String(value).replace(/\s/g, ""));
+  return Number.isSafeInteger(parsed) ? parsed : null;
+};
+const formatInteger = (value) => value.toLocaleString("ru-RU").replace(/[\u00a0\u202f]/g, " ");
+const formatMoney = (value) => `${value.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u00a0\u202f]/g, " ")} ₽`;
+const formatRate = (value) => value.toFixed(2).replace(".", ",");
+
+function splitDeliveryCounts(impressionChunk, clickChunk, spend, cpc, ctr) {
+  const tokens = `${impressionChunk ?? ""} ${clickChunk ?? ""}`.trim().split(/\s+/).filter(Boolean);
+  const groupedNumber = (parts) => parts.length > 0 && /^\d{1,3}$/.test(parts[0]) && parts.slice(1).every((part) => /^\d{3}$/.test(part));
+  const spendValue = moneyNumber(spend);
+  const cpcValue = moneyNumber(cpc);
+  const ctrValue = decimalNumber(ctr);
+  const candidates = [];
+
+  for (let index = 1; index < tokens.length; index += 1) {
+    const impressionTokens = tokens.slice(0, index);
+    const clickTokens = tokens.slice(index);
+    if (!groupedNumber(impressionTokens) || !groupedNumber(clickTokens)) continue;
+    const impressions = Number(impressionTokens.join(""));
+    const clicks = Number(clickTokens.join(""));
+    let score = 0;
+    if (cpcValue !== null && spendValue !== null) {
+      score += clicks > 0 && cpcValue > 0
+        ? Math.abs((spendValue / clicks) - cpcValue) / cpcValue
+        : clicks === 0 && cpcValue === 0 ? 0 : 1_000;
+    }
+    if (ctrValue !== null && impressions > 0) {
+      const calculatedCtr = clicks / impressions * 100;
+      score += Math.abs(calculatedCtr - ctrValue) / Math.max(ctrValue, 0.01);
+    }
+    candidates.push({ impressions, clicks, score });
+  }
+
+  return candidates.sort((left, right) => left.score - right.score)[0] ?? null;
+}
 
 const files = await readdir(sourceDir);
 const active = await readJson("active-audit-records.json");
@@ -134,10 +177,11 @@ function parseAdMetricRows() {
       const monies = [...prefix.matchAll(/([\d\s]+,\d{2}) ₽/g)];
       const delivery = prefix.match(/(\d{2}\.\d{2}\.\d{2})\s+(Принято|Отклонено|На проверке)\s+([\d\s]+)\s+([\d\s]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d\s]+,\d{2} ₽)/);
       const spend = monies[1]?.[0] ?? null;
-      const impressions = clean(delivery?.[3]);
-      const clicks = clean(delivery?.[4]);
+      const counts = splitDeliveryCounts(delivery?.[3], delivery?.[4], spend, delivery?.[7], delivery?.[6]);
+      const impressions = counts ? formatInteger(counts.impressions) : null;
+      const clicks = counts ? formatInteger(counts.clicks) : null;
       const spendNumber = moneyNumber(spend);
-      const impressionNumber = impressions ? Number(impressions.replace(/\s/g, "")) : null;
+      const impressionNumber = counts?.impressions ?? null;
       rows.set(adId, {
         result: monies[0] ? clean(prefix.slice(0, monies[0].index)) : "not_observed",
         result_cost: monies[0]?.[0] ?? "not_observed",
@@ -257,10 +301,11 @@ for (const triple of adTriples) {
   const shortText = activeRecord?.short_text ?? paragraphAfter(snapshot, "Короткое описание") ?? paragraphAfter(snapshot, "Текст объявления") ?? "not_observed";
   const longText = activeRecord?.long_text ?? paragraphAfter(snapshot, "Длинное описание") ?? "not_observed";
   const url = activeRecord?.url ?? linkFrom(snapshot);
-  const cta = activeRecord?.cta
+  const ctaCandidate = activeRecord?.cta
     ?? genericAfter(snapshot, "Надпись на кнопке")
     ?? (snapshot.includes("Выберите клип") ? "Без отдельной кнопки (клип)" : null)
     ?? (snapshot.includes('button "Пост"') ? "Без отдельной кнопки (пост)" : "not_observed");
+  const cta = /Загружается/i.test(ctaCandidate) ? "not_observed" : ctaCandidate;
   const utm = { ...parseUtm(url),
     utm_source: activeRecord?.utm_source ?? parseUtm(url).utm_source,
     utm_medium: activeRecord?.utm_medium ?? parseUtm(url).utm_medium,
@@ -271,6 +316,9 @@ for (const triple of adTriples) {
   const metrics = activeRecord?.lifetime_stats ?? adMetrics.get(triple.adId) ?? {};
   const creativeSource = path.join(sourceDir, `creative-${triple.adId}.webp`);
   const creativeAvailable = files.includes(`creative-${triple.adId}.webp`);
+  const creativeHash = creativeAvailable
+    ? createHash("sha256").update(await readFile(creativeSource)).digest("hex")
+    : null;
   if (creativeAvailable) {
     await copyFile(creativeSource, path.join(siteDir, "assets", "creatives", `${triple.adId}.webp`));
   }
@@ -299,6 +347,7 @@ for (const triple of adTriples) {
     name,
     creative_id: triple.adId,
     creative: creativeAvailable ? `assets/creatives/${triple.adId}.webp` : null,
+    creative_sha256: creativeHash,
     creative_status: creativeAvailable ? "observed" : "not_observed: VK preview unavailable",
     format: activeRecord?.format ?? (snapshot.includes("00:") ? "video" : "static/post"),
     title,
@@ -318,6 +367,9 @@ for (const triple of adTriples) {
     ctr: metrics.ctr ?? "not_observed",
     cpc: metrics.cpc ?? "not_observed",
     cpm: metrics.cpm ?? "not_observed",
+    spend_value: moneyNumber(metrics.spend),
+    impressions_value: integerNumber(metrics.impressions),
+    clicks_value: integerNumber(metrics.clicks),
     frequency: "not_observed",
     vtr: metrics.vtr ?? "not_observed",
     checkout: "not_observed",
@@ -328,6 +380,85 @@ for (const triple of adTriples) {
     rationale,
   });
 }
+
+const creativeGroups = new Map();
+for (const ad of ads.filter((item) => item.creative_sha256)) {
+  const group = creativeGroups.get(ad.creative_sha256) ?? [];
+  group.push(ad);
+  creativeGroups.set(ad.creative_sha256, group);
+}
+
+const creativeBenchmarkRows = ads.filter((item) => item.creative_sha256 && item.impressions_value !== null && item.clicks_value !== null);
+const creativeBenchmarkImpressions = creativeBenchmarkRows.reduce((sum, item) => sum + item.impressions_value, 0);
+const creativeBenchmarkClicks = creativeBenchmarkRows.reduce((sum, item) => sum + item.clicks_value, 0);
+const creativeBenchmarkCtr = creativeBenchmarkImpressions > 0 ? creativeBenchmarkClicks / creativeBenchmarkImpressions * 100 : null;
+
+const creatives = [...creativeGroups.entries()].map(([hash, relatedAds]) => {
+  const representative = relatedAds[0];
+  const spendRows = relatedAds.filter((item) => item.spend_value !== null);
+  const impressionRows = relatedAds.filter((item) => item.impressions_value !== null);
+  const clickRows = relatedAds.filter((item) => item.clicks_value !== null);
+  const spendValue = spendRows.length ? spendRows.reduce((sum, item) => sum + item.spend_value, 0) : null;
+  const impressionsValue = impressionRows.length ? impressionRows.reduce((sum, item) => sum + item.impressions_value, 0) : null;
+  const clicksValue = clickRows.length ? clickRows.reduce((sum, item) => sum + item.clicks_value, 0) : null;
+  const ctrValue = impressionsValue > 0 && clicksValue !== null ? clicksValue / impressionsValue * 100 : null;
+  const cpcValue = clicksValue > 0 && spendValue !== null ? spendValue / clicksValue : null;
+  const cpmValue = impressionsValue > 0 && spendValue !== null ? spendValue / impressionsValue * 1000 : null;
+  const activeAds = relatedAds.filter((item) => item.status === "Транслируется").length;
+  const decisions = new Set(relatedAds.map((item) => item.decision));
+  const decision = decisions.has("переработать")
+    ? "переработать"
+    : activeAds > 0 ? "оставить" : decisions.has("протестировать повторно") ? "протестировать повторно" : "остановить";
+  let signal = "Мало данных";
+  let signalCode = "low_data";
+  if (ctrValue !== null && creativeBenchmarkCtr !== null && impressionsValue >= 5_000) {
+    if (ctrValue >= creativeBenchmarkCtr * 1.25) {
+      signal = "CTR выше среднего";
+      signalCode = "strong";
+    } else if (ctrValue <= creativeBenchmarkCtr * 0.75) {
+      signal = "CTR ниже среднего";
+      signalCode = "weak";
+    } else {
+      signal = "CTR около среднего";
+      signalCode = "neutral";
+    }
+  }
+
+  const observedCtas = [...new Set(relatedAds.map((item) => item.cta))].filter((value) => value && value !== "not_observed");
+
+  return {
+    id: `visual_${hash.slice(0, 12)}`,
+    name: representative.name,
+    visual_sha256: hash,
+    creative: representative.creative,
+    ad_count: relatedAds.length,
+    ad_ids: relatedAds.map((item) => item.id),
+    campaign_ids: [...new Set(relatedAds.map((item) => item.campaign_id))],
+    group_ids: [...new Set(relatedAds.map((item) => item.group_id))],
+    active_ads: activeAds,
+    active: activeAds > 0,
+    status: activeAds > 0 ? "Есть активные" : "Только остановленные",
+    decision,
+    cta: observedCtas.join(" · ") || "not_observed",
+    spend: spendValue !== null ? formatMoney(spendValue) : "not_observed",
+    impressions: impressionsValue !== null ? formatInteger(impressionsValue) : "not_observed",
+    clicks: clicksValue !== null ? formatInteger(clicksValue) : "not_observed",
+    ctr: ctrValue !== null ? formatRate(ctrValue) : "not_observed",
+    cpc: cpcValue !== null ? formatMoney(cpcValue) : "not_observed",
+    cpm: cpmValue !== null ? formatMoney(cpmValue) : "not_observed",
+    spend_value: spendValue,
+    impressions_value: impressionsValue,
+    clicks_value: clicksValue,
+    ctr_value: ctrValue,
+    cpc_value: cpcValue,
+    cpm_value: cpmValue,
+    metric_coverage: `${relatedAds.filter((item) => item.spend_value !== null && item.impressions_value !== null && item.clicks_value !== null).length} / ${relatedAds.length}`,
+    signal,
+    signal_code: signalCode,
+    signal_basis: creativeBenchmarkCtr !== null ? `Средний CTR observed preview: ${formatRate(creativeBenchmarkCtr)}` : "not_observed",
+    ticket_cpa: "not_observed",
+  };
+}).sort((left, right) => (right.spend_value ?? -1) - (left.spend_value ?? -1));
 
 const audit = {
   meta: {
@@ -350,11 +481,15 @@ const audit = {
     active_ads: ads.filter((item) => item.status === "Транслируется").length,
     creatives_observed: ads.filter((item) => item.creative).length,
     creatives_not_observed: ads.filter((item) => !item.creative).length,
+    unique_creatives: creatives.length,
+    duplicate_creative_sets: creatives.filter((item) => item.ad_count > 1).length,
+    ads_in_duplicate_creative_sets: creatives.filter((item) => item.ad_count > 1).reduce((sum, item) => sum + item.ad_count, 0),
     price_1550_ads: ads.filter((item) => item.price_1550).length,
   },
   campaigns,
   groups,
   ads,
+  creatives,
 };
 
 const digest = createHash("sha256").update(JSON.stringify(audit)).digest("hex");
