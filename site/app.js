@@ -1,6 +1,10 @@
 const state = { data: null, view: "campaigns", query: "", status: "all", decision: "all" };
 const content = document.querySelector("#content");
 const resultCount = document.querySelector("#result-count");
+const creativeViewer = document.querySelector("#creative-viewer");
+const creativeViewerImage = document.querySelector("#creative-viewer-image");
+const creativeViewerTitle = document.querySelector("#creative-viewer-title");
+const creativeViewerCaption = document.querySelector("#creative-viewer-caption");
 
 const escapeHtml = (value) => String(value ?? "not_observed").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 const decisionClass = (value) => ({ "оставить": "leave", "переработать": "rework", "остановить": "stop", "протестировать повторно": "retest" })[value] ?? "retest";
@@ -29,7 +33,9 @@ function registryRecord(item, type) {
 }
 
 function creativeCard(item) {
-  const media = item.creative ? `<img src="${escapeHtml(item.creative)}" alt="Предпросмотр креатива объявления ${escapeHtml(item.id)}" loading="lazy" />` : `<span>Предпросмотр не отдан VK<br />${escapeHtml(item.id)}</span>`;
+  const media = item.creative
+    ? `<button class="creative-open" type="button" data-src="${escapeHtml(item.creative)}" data-title="${escapeHtml(item.name)}" data-id="${escapeHtml(item.id)}" aria-label="Открыть креатив объявления ${escapeHtml(item.id)} крупно"><img src="${escapeHtml(item.creative)}" alt="Предпросмотр креатива объявления ${escapeHtml(item.id)}" loading="lazy" /><span class="creative-expand">Открыть крупно</span></button>`
+    : `<span class="creative-unavailable">Предпросмотр не отдан VK<br />${escapeHtml(item.id)}</span>`;
   return `<article class="creative-card"><div class="creative-media">${media}</div><div class="creative-copy"><div class="creative-topline"><span class="id">creative_id ${escapeHtml(item.creative_id)}</span>${decisionBadge(item)}</div><h2>${escapeHtml(item.name)}</h2><p class="headline">${escapeHtml(item.title)}</p><div class="creative-stats"><div><small>Расход</small><b>${escapeHtml(item.spend)}</b></div><div><small>CTR</small><b>${escapeHtml(item.ctr)}</b></div><div><small>CPC</small><b>${escapeHtml(item.cpc)}</b></div><div><small>CPA билета</small><b>${escapeHtml(item.ticket_cpa)}</b></div></div><div class="creative-meta"><span><b>CTA</b>${escapeHtml(item.cta)}</span><span><b>Статус</b>${escapeHtml(item.status)} · ${escapeHtml(item.moderation)}</span><span><b>Текст</b>${escapeHtml(item.short_text)}</span><span class="url"><b>Ссылка</b>${escapeHtml(item.url)}</span><span><b>UTM</b>${item.utm_complete ? "полная" : "неполная"}</span><span><b>Purchase / revenue</b>not_observed</span></div><p class="rationale">${escapeHtml(item.rationale)}</p></div></article>`;
 }
 
@@ -57,6 +63,21 @@ function renderSummary(data) {
   document.querySelector("#summary").innerHTML = cards.map(([value, label, highlight]) => `<div class="summary-card ${highlight ? "highlight" : ""}"><b>${value}</b><span>${label}</span></div>`).join("");
   document.querySelector("#attribution-note").textContent = data.meta.attribution;
 }
+
+content.addEventListener("click", (event) => {
+  const trigger = event.target.closest(".creative-open");
+  if (!trigger) return;
+  creativeViewerImage.src = trigger.dataset.src;
+  creativeViewerImage.alt = `Креатив объявления ${trigger.dataset.id}`;
+  creativeViewerTitle.textContent = `Креатив #${trigger.dataset.id}`;
+  creativeViewerCaption.textContent = trigger.dataset.title;
+  creativeViewer.showModal();
+});
+
+document.querySelector("#creative-viewer-close").addEventListener("click", () => creativeViewer.close());
+creativeViewer.addEventListener("click", (event) => {
+  if (event.target === creativeViewer) creativeViewer.close();
+});
 
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
   document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("is-active", tab === button));
