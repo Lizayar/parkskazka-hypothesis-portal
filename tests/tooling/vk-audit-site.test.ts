@@ -18,6 +18,18 @@ describe("published VK audit", () => {
     expect(audit.ads.every((item: { ticket_cpa: string }) => item.ticket_cpa === "not_observed")).toBe(true);
     expect(audit.ads.filter((item: { creative: string | null }) => item.creative).length).toBe(73);
 
+    for (const item of [...audit.campaigns, ...audit.groups, ...audit.ads]) {
+      expect(item.cabinet_name).toBe(item.name);
+      expect(item.cabinet_name).not.toBe("Название не наблюдается");
+      expect(item.display_name).toBe(`${item.cabinet_name} · ID ${item.id}`);
+    }
+    expect(audit.groups.every((item: { name: string }) => !/^Группа(?:\s|$)/i.test(item.name))).toBe(true);
+
+    const groupsById = new Map(audit.groups.map((item: { id: string }) => [item.id, item]));
+    expect(groupsById.get("147693868")).toMatchObject({ name: "vk_a3_commfam_mskmo_banner_familyday", display_name: "vk_a3_commfam_mskmo_banner_familyday · ID 147693868" });
+    expect(groupsById.get("148796612")).toMatchObject({ name: "vk_a1_kw14_mskmo_feed-video_familyticket", display_name: "vk_a1_kw14_mskmo_feed-video_familyticket · ID 148796612" });
+    expect(groupsById.get("148796613")).toMatchObject({ name: "vk_a32_intleisure_mskmo_feed-video_standardticket", display_name: "vk_a32_intleisure_mskmo_feed-video_standardticket · ID 148796613" });
+
     const campaignIds = new Set(audit.campaigns.map((item: { id: string }) => item.id));
     const groupIds = new Set(audit.groups.map((item: { id: string }) => item.id));
     expect(audit.groups.every((item: { campaign_id: string }) => campaignIds.has(item.campaign_id))).toBe(true);
@@ -88,6 +100,7 @@ describe("published VK audit", () => {
     expect(app).toContain("campaignRecord");
     expect(app).toContain("groupRecord");
     expect(app).toContain("uniqueCreativeCard");
+    expect(app).toContain("item.display_name");
     expect(css).toContain("height: auto");
     expect(css).toContain("grid-template-columns: repeat(2");
   });

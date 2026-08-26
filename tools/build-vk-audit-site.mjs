@@ -12,6 +12,7 @@ if (!process.argv[2]) {
 const readJson = async (name) => JSON.parse(await readFile(path.join(sourceDir, name), "utf8"));
 const readText = async (name) => readFile(path.join(sourceDir, name), "utf8");
 const clean = (value) => value?.replaceAll('\\"', '"').replace(/\s+/g, " ").trim() || null;
+const displayName = (cabinetName, id) => `${cabinetName ?? "Название не наблюдается"} · ID ${id}`;
 const excludedCampaignIds = new Set([
   "1221944",
   "1898108",
@@ -148,6 +149,42 @@ function parseUtm(url) {
   }
 }
 
+async function parseCabinetGroupNames() {
+  const names = new Map();
+  const tableSnapshots = files.filter((name) => /^audit-groups-\d+-(top|bottom)\.md$/.test(name));
+
+  await Promise.all(tableSnapshots.map(async (name) => {
+    const snapshot = await readText(name);
+    for (const line of snapshot.split(/\r?\n/)) {
+      const row = line.match(/- row "(.*)"/)?.[1];
+      const ids = row?.match(/\s+([0-9]{8,9})\s+([0-9]{7,8})$/);
+      const marker = row?.indexOf(" • Действия") ?? -1;
+      if (!ids || marker <= 0) continue;
+      names.set(ids[1], clean(row.slice(0, marker)));
+    }
+  }));
+
+  const campaignSnapshots = new Map();
+  for (const pair of groupPairs.filter(({ groupId }) => !names.has(groupId))) {
+    const campaignSnapshot = campaignSnapshots.get(pair.campaignId)
+      ?? await readText(`campaign-detail-${pair.campaignId}.md`);
+    campaignSnapshots.set(pair.campaignId, campaignSnapshot);
+    const hierarchy = new Set(hierarchyNames(campaignSnapshot));
+    const relatedAds = adTriples.filter(({ groupId }) => groupId === pair.groupId);
+
+    for (const { adId } of relatedAds) {
+      const adSnapshot = await readText(`ad-detail-${adId}.md`);
+      const utmTerm = parseUtm(linkFrom(adSnapshot)).utm_term;
+      if (utmTerm && hierarchy.has(utmTerm)) {
+        names.set(pair.groupId, utmTerm);
+        break;
+      }
+    }
+  }
+
+  return names;
+}
+
 function extractVisibleSettings(snapshot, labels) {
   const output = {};
   for (const label of labels) {
@@ -201,6 +238,7 @@ function parseAdMetricRows() {
 }
 
 const adMetrics = await parseAdMetricRows();
+const cabinetGroupNameById = await parseCabinetGroupNames();
 
 const campaigns = [];
 for (const campaignId of campaignIds) {
@@ -208,7 +246,7 @@ for (const campaignId of campaignIds) {
   const activeRecord = activeCampaignById.get(campaignId);
   const stats = campaignStatsById.get(campaignId);
   const names = hierarchyNames(snapshot);
-  const name = activeRecord?.campaign_name ?? stats?.campaign_name ?? editorTitle(snapshot) ?? names[0] ?? `Кампания ${campaignId}`;
+  const name = activeRecord?.campaign_name ?? stats?.campaign_name ?? editorTitle(snapshot) ?? names[0] ?? "Название не наблюдается";
   const settings = extractVisibleSettings(snapshot, ["Какой формат будете использовать?", "Рекламируемый объект", "Целевое действие", "Даты показа", "Настроить частоту показов"]);
   const status = stats?.status ?? "Не транслируется";
   const isActive = status === "Транслируется";
@@ -216,6 +254,8 @@ for (const campaignId of campaignIds) {
   campaigns.push({
     id: campaignId,
     name,
+    cabinet_name: name,
+    display_name: displayName(name, campaignId),
     status,
     active: isActive,
     promotion_object: activeRecord?.promotion_object ?? settings["Рекламируемый объект"] ?? "not_observed",
@@ -239,14 +279,19 @@ for (const campaignId of campaignIds) {
   });
 }
 
-const campaignNameById = new Map(campaigns.map((item) => [item.id, item.name]));
+const campaignDisplayNameById = new Map(campaigns.map((item) => [item.id, item.display_name]));
 const groups = [];
 for (const pair of groupPairs) {
   const snapshot = await readText(`group-detail-${pair.groupId}.md`);
   const activeRecord = activeGroupById.get(pair.groupId);
   const summary = groupSummaryById.get(pair.groupId);
   const names = hierarchyNames(snapshot);
-  const name = activeRecord?.group_name ?? summary?.name ?? editorTitle(snapshot) ?? names[1] ?? `Группа ${pair.groupId}`;
+  const name = cabinetGroupNameById.get(pair.groupId)
+    ?? activeRecord?.group_name
+    ?? summary?.name
+    ?? editorTitle(snapshot)
+    ?? names[1]
+    ?? "Название не наблюдается";
   const settings = extractVisibleSettings(snapshot, ["Стратегия ставок", "Бюджет", "Даты показа", "Расписание показов", "География", "Пол и возраст", "Интересы", "Аудитории", "Устройства", "Места размещения", "Расширение аудитории"]);
   const parent = campaigns.find((item) => item.id === pair.campaignId);
   const isActive = activeRecord ? true : false;
@@ -257,8 +302,10 @@ for (const pair of groupPairs) {
   groups.push({
     id: pair.groupId,
     campaign_id: pair.campaignId,
-    campaign_name: campaignNameById.get(pair.campaignId) ?? parent?.name ?? "not_observed",
+    campaign_name: campaignDisplayNameById.get(pair.campaignId) ?? (parent ? displayName(parent.name, parent.id) : "not_observed"),
     name,
+    cabinet_name: name,
+    display_name: displayName(name, pair.groupId),
     status: isActive ? "Транслируется" : "Не транслируется",
     active: isActive,
     strategy: activeRecord?.strategy ?? settings["Стратегия ставок"] ?? "not_observed",
@@ -294,9 +341,11 @@ for (const triple of adTriples) {
   const summary = adSummaryById.get(triple.adId);
   const names = hierarchyNames(snapshot);
   const editorUnavailable = snapshot.includes('button "Перезагрузить"');
-  const name = editorUnavailable
-    ? `Объявление ${triple.adId} (карточка VK недоступна)`
-    : activeRecord?.ad_name ?? summary?.name ?? editorTitle(snapshot) ?? names.at(-1) ?? `Объявление ${triple.adId}`;
+  const name = activeRecord?.ad_name
+    ?? summary?.name
+    ?? (editorUnavailable ? null : editorTitle(snapshot))
+    ?? names.at(-1)
+    ?? "Название не наблюдается";
   const title = activeRecord?.title ?? paragraphAfter(snapshot, "Заголовок") ?? "not_observed";
   const shortText = activeRecord?.short_text ?? paragraphAfter(snapshot, "Короткое описание") ?? paragraphAfter(snapshot, "Текст объявления") ?? "not_observed";
   const longText = activeRecord?.long_text ?? paragraphAfter(snapshot, "Длинное описание") ?? "not_observed";
@@ -342,9 +391,11 @@ for (const triple of adTriples) {
     id: triple.adId,
     group_id: triple.groupId,
     campaign_id: triple.campaignId,
-    campaign_name: campaignNameById.get(triple.campaignId) ?? "not_observed",
-    group_name: groups.find((item) => item.id === triple.groupId)?.name ?? "not_observed",
+    campaign_name: campaignDisplayNameById.get(triple.campaignId) ?? "not_observed",
+    group_name: groups.find((item) => item.id === triple.groupId)?.display_name ?? "not_observed",
     name,
+    cabinet_name: name,
+    display_name: displayName(name, triple.adId),
     creative_id: triple.adId,
     creative: creativeAvailable ? `assets/creatives/${triple.adId}.webp` : null,
     creative_sha256: creativeHash,
@@ -429,6 +480,8 @@ const creatives = [...creativeGroups.entries()].map(([hash, relatedAds]) => {
   return {
     id: `visual_${hash.slice(0, 12)}`,
     name: representative.name,
+    cabinet_name: representative.cabinet_name,
+    display_name: representative.display_name,
     visual_sha256: hash,
     creative: representative.creative,
     ad_count: relatedAds.length,
